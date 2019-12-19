@@ -3,11 +3,6 @@ const app = express();
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
-// app.use((req, res, next) => {
-//     res.status(200).json({
-//         message: "It works"
-//     });
-// });
 
 const accountRoutes = require('./router/api/accounts');
 
