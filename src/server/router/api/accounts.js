@@ -2,8 +2,9 @@ const router = require('express').Router();
 const mongoose = require('mongoose');
 const Account = require('./models/account');
 const { parse } = require('./helpers/accounts')
+const checkAuth = require('./middleware/check-auth');
 
-router.get('/', (req, res, next) => {
+router.get('/', checkAuth,  (req, res, next) => {
   Account.find()
   .select(["_id", "name", "username"])
   .exec()
@@ -16,7 +17,7 @@ router.get('/', (req, res, next) => {
     res.status(500).json({error: err})
   })
 });
-router.get('/:id/password', (req, res, next) => {
+router.get('/:id/password', checkAuth,  (req, res, next) => {
   const { id } = req.params;
   Account.findById(id)
   .select("password")
@@ -30,7 +31,7 @@ router.get('/:id/password', (req, res, next) => {
   })
 });
 
-router.post('/', (req, res, next) => {
+router.post('/', checkAuth, (req, res, next) => {
   const account = new Account({
     _id: new mongoose.Types.ObjectId(),
     name: req.body.name,
@@ -49,7 +50,7 @@ router.post('/', (req, res, next) => {
   })
     
   });
-router.patch('/:id', (req, res, next) => {
+router.patch('/:id', checkAuth,  (req, res, next) => {
   const { id } = req.params;
   const { body } = req;
   const updateOps = Object.keys(body).reduce((acc, item) => (Object.assign(acc, {[item]: body[item]})), {})
@@ -67,7 +68,7 @@ router.patch('/:id', (req, res, next) => {
       })    
   });
 })
-router.delete('/:id',(req, res, next) => {
+router.delete('/:id', checkAuth, (req, res, next) => {
   const { id } = req.params;
   console.log(id)
   Account.remove({_id: id})
