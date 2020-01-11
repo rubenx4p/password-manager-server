@@ -5,47 +5,30 @@ const User = require('./models/user');
 const jwt = require('jsonwebtoken');
 const checkAuth = require('./middleware/check-auth');
 
-router.post('/signup', (req, res, nex) => {
-    User.find({ email: req.body.email })
-        .exec()
-        .then(users => {
-            if (users.length >= 1) {
-                return res.status(409).json({
-                    message: 'Mail exist'
-                })
-            } else {
-                bcrypt.hash(req.body.password, 10, (err, hash) => {
-                    if (err) {
-                        return res.status(500).json({
-                            error: err
-                        })
-                    } else {
-                        const user = new User({
-                            _id: new mongoose.Types.ObjectId(),
-                            email: req.body.email,
-                            password: hash
-                        })
-                        user.save()
-                            .then(result => {
-                                console.log(result)
-                                res.status(201).json({
-                                    message: 'User created'
-                                })
-                            })
-                            .catch(err => {
-                                console.log(err);
-                                res.status(500).json({
-                                    error: err
-                                })
-                            })
-                    }
-            
-                })
+router.post('/', async (req, res, nex) => {
+    try {
+        let user = await User.findOne({ email: req.body.email });
+        if (user) {
+            return res.status(409).send('Mail already exist')
+        }
+        user = new User({
+            _id: new mongoose.Types.ObjectId(),
+            email: req.body.email
+        })
+        user.password = await bcrypt.hash(req.body.password, 10);
+        await user.save()
+        return res.status(201).json({
+            user: {
+                id: user._id,
+                email: user.email
             }
         })
-        .catch()
-    
-
+    }
+    catch (err) {
+        res.status(500).send({
+            error: err
+        })
+    }
 });
 
 router.post('/login', (req, res, next) => {
