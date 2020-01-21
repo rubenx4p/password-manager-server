@@ -1,5 +1,6 @@
 const mongoose = require('mongoose')
 const jwt = require('jsonwebtoken');
+const Account = require('./account')
 
 const userSchema = new mongoose.Schema({
     _id: mongoose.Schema.Types.ObjectId,
@@ -9,14 +10,15 @@ const userSchema = new mongoose.Schema({
         useCreateIndex: true,
         match: /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/   
     },
-    password: {type: String, required: true}
+    password: { type: String, required: true },
+    accounts: [Account.schema]
 });
 
 userSchema.methods.generateAuthToken = function() {
     const token = jwt.sign(
         { email: this.email, userId: this._id },
         process.env.JWT_KEY,
-        { expiresIn: '1h' }
+        { expiresIn: '30d' }
     )
     return token;
 }
