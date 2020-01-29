@@ -6,6 +6,8 @@ const accountService = require('../services/accounts')
 router.get('/', auth, accountService.getAccounts);
 router.post('/', auth, accountService.addAccount);
 router.delete('/', auth, accountService.deleteAccount)
+router.post('/:id/password', auth, accountService.receiveAccountPassword)
+router.patch('/:id', auth, accountService.editAccount)
 
 router.get('/password', auth,  (req, res, next) => {
   const { id } = req.params;
@@ -21,24 +23,24 @@ router.get('/password', auth,  (req, res, next) => {
   })
 });
   
-router.patch('/:id', auth,  (req, res, next) => {
-  const { id } = req.params;
-  const { body } = req;
-  const updateOps = Object.keys(body).reduce((acc, item) => (Object.assign(acc, {[item]: body[item]})), {})
+// router.patch('/:id', auth,  (req, res, next) => {
+//   const { id } = req.params;
+//   const { body } = req;
+//   const updateOps = Object.keys(body).reduce((acc, item) => (Object.assign(acc, {[item]: body[item]})), {})
 
-  Account.update({_id: id}, { $set: updateOps })
-    .select(["_id", "name", "username", "password"])
-    .exec()
-    .then(result => {
-      res.status(200).json();
-    })
-    .catch(error => {
-      console.log(error);
-      res.status(500).json({
-        error: error
-      })    
-  });
-})
+//   Account.update({_id: id}, { $set: updateOps })
+//     .select(["_id", "name", "username", "password"])
+//     .exec()
+//     .then(result => {
+//       res.status(200).json();
+//     })
+//     .catch(error => {
+//       console.log(error);
+//       res.status(500).json({
+//         error: error
+//       })    
+//   });
+// })
 
 
 module.exports = router;
