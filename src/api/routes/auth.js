@@ -14,7 +14,7 @@ router.post('/', async (req, res, next) => {
         }
         const token = user.generateAuthToken();
         return res.status(200).json({
-            message: 'Auth successful',
+            msg: 'Auth successful',
             token
         })
     }

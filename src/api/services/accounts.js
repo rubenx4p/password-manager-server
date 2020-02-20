@@ -1,34 +1,28 @@
 const bcrypt = require('bcryptjs');
 const Account = require('../models/account');
 const User = require('../models/user');
-const CryptoJS = require("crypto-js");
 const aes = require('../../utils/aes')
-// // Encrypt
-// var ciphertext = CryptoJS.AES.encrypt('my message', 'secret key 123');
- 
-// console.log("!!!!ciphertext!!! = ", ciphertext.toString())
+const to = require('../../utils/to')
 
-// // Decrypt
-// var bytes  = CryptoJS.AES.decrypt(ciphertext.toString(), 'secret key 123');
-// var plaintext = bytes.toString(CryptoJS.enc.Utf8);
- 
-// console.log(plaintext);
 const getAccounts = async (req, res) => {
     const userId = req.userData.userId;
-    const user = await User.findById(userId)
+    const [user, err] = await to(User.findById(userId))
+
+    if (err) {
+        return res.status(400).send({msg: "User not found"})
+    }
     res.status(200).json({ accounts: user.accounts });
   };
 
 const addAccount = async (req, res) => {
-    try {
-        const user = await User.findById(req.userData.userId);
-        if (!user) {
-            return res.status(400).send("Invalid user")
+        const [user, userErr] = await to(User.findById(req.userData.userId))
+        if (userErr) {
+            return res.status(400).send({msg: "Invalid user"})
         }
         const { key, password} = req.body
-        const validPassword = await bcrypt.compare(key, user.password)
+        const [validPassword, passwordErr] = await to(bcrypt.compare(key, user.password))
         if (!validPassword) {
-            return res.status(400).send("Invalid password")
+            return res.status(400).send({msg: "Invalid password"})
         }
         const ciphertext = aes.encrypt(password, key)
         const account = new Account({
@@ -37,24 +31,43 @@ const addAccount = async (req, res) => {
             password: ciphertext
         })
         user.accounts.push(account);
-        await user.save();
+        const [save, saveErr] = await to(user.save())
+        if (saveErr) {
+            return res.status(500).send({msg: "Internal error on save"})
+        }
         res.status(200).json({
-            message: "account added successfuly",
+            msg: "Account added successfuly",
             account: { id: account._id, name: account.name}
         })
-    } catch (err) {
-        return res.status(400).send("Problem with the request")
-    }
 }
-const deleteAccount = async (req, res) => {
-    try {
-        await Account.deleteOne({ _id: req.userData.userId })
+const deleteAccount = async ({ userData, params, body }, res) => {
+    const { userId } = userData
+    const [user, userErr] = await to(User.findById(userId))
+
+    if (userErr) {
+        return res.status(400).send({msg: "Invalid user"})
     }
-    catch (err) {
-        res.status(500).json({
-            error: error
-          })  
+
+    const { key } = body
+    const [validKey, keyErr] = await to(bcrypt.compare(key, user.password))
+    if (!validKey) {
+        return res.status(400).send({ msg: "Invalid key"})
     }
+
+    const { id } = params
+    const [pull, pullErr] = await to(user.accounts.pull(id))
+
+    if (pullErr) {
+        return res.status(400).send({msg: "Wrong account"})
+    }
+
+    const [save, saveErr] = await to(user.save())
+
+    if (saveErr) {
+        return res.status(400).send({msg: "Internal error on save"})
+    }
+
+    res.status(200).send({msg: 'Account Successfully removed'})
 }
   
 const receiveAccountPassword = async (req, res) => {
@@ -64,11 +77,11 @@ const receiveAccountPassword = async (req, res) => {
         const decryptObject = aes.decrypt(account.password, req.body.key)
         if (decryptObject.status === 500) {
             return res.status(500).json({
-                message: "the key is inccorect"
+                msg: "the key is inccorect"
               })  
         }
         res.status(200).json({
-            message: "received password successfuly",
+            msg: "received password successfuly",
             password: decryptObject.message
         })
         // account = await user.accounts.findById(req.params.id)
@@ -88,7 +101,7 @@ const editAccount = async (req, res) => {
         const decryptObject = aes.decrypt(account.password, req.body.key)
         if (decryptObject.status === 500) {
             return res.status(500).json({
-                message: "the key is inccorect"
+                msg: "the key is inccorect"
               })  
         }
         const {
@@ -110,7 +123,7 @@ const editAccount = async (req, res) => {
                 password: ciphertext,
                 username
             },
-            message: "account edited successfuly"
+            msg: "account edited successfuly"
         }
         res.status(200).json(result)
     }

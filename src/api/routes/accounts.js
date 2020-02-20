@@ -5,7 +5,7 @@ const accountService = require('../services/accounts')
 
 router.get('/', auth, accountService.getAccounts);
 router.post('/', auth, accountService.addAccount);
-router.delete('/', auth, accountService.deleteAccount)
+router.delete('/:id', auth, accountService.deleteAccount)
 router.post('/:id/password', auth, accountService.receiveAccountPassword)
 router.patch('/:id', auth, accountService.editAccount)
 

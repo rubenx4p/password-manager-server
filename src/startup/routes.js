@@ -25,7 +25,7 @@ module.exports = function (app) {
     app.use('/api/auth', auth);
 
     app.use((req, res, next) => {
-        const err = new Error('Not found');
+        const err = new Error('Route not found');
         err.status = 404;
         next(err);
     })
@@ -33,7 +33,7 @@ module.exports = function (app) {
     app.use((err, req, res, next) => {
         res.status(err.status || 500);
         res.json({error: {
-            message: err.message
+            msg: err.message
         }})
     })
 }
