@@ -3,9 +3,13 @@ const bodyParser = require('body-parser');
 const accounts = require('../api/routes/accounts');
 const users = require('../api/routes/users');
 const auth = require('../api/routes/auth');
+const logger = require('../config/logger');
+const error = require('../api/middleware/error')
 
 module.exports = function (app) {
-    app.use(morgan('dev'))
+    // app.use(morgan('combined'))
+    // app.use(morgan(':method :url :status :res[content-length] - :response-time ms'));
+    app.use(morgan(':method :url :status :res[content-length] - :response-time ms', { stream: logger.stream }));
     app.use(bodyParser.urlencoded({extended: true}));
     app.use(bodyParser.json());
 
@@ -30,10 +34,9 @@ module.exports = function (app) {
         next(err);
     })
     
-    app.use((err, req, res, next) => {
-        res.status(err.status || 500);
-        res.json({error: {
-            msg: err.message
-        }})
-    })
+    app.use(error)
 }
+
+process.on('unhandledRejection', (ex) => {
+    logger.error(`unhandledRejection :: ${ex}`)
+})
