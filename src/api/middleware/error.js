@@ -1,6 +1,7 @@
 const logger = require('../../config/logger');
 
 module.exports = (err, req, res, next) => {
+    console.log("INSIDE ERROR")
     logger.info(`msg: error handler :: err: ${JSON.stringify(err)}`)
 
     const { msg = "Something failed", status, err: error, func } = err

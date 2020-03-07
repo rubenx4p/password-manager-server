@@ -7,8 +7,6 @@ const logger = require('../config/logger');
 const error = require('../api/middleware/error')
 
 module.exports = function (app) {
-    // app.use(morgan('combined'))
-    // app.use(morgan(':method :url :status :res[content-length] - :response-time ms'));
     app.use(morgan(':method :url :status :res[content-length] - :response-time ms', { stream: logger.stream }));
     app.use(bodyParser.urlencoded({extended: true}));
     app.use(bodyParser.json());
@@ -38,5 +36,5 @@ module.exports = function (app) {
 }
 
 process.on('unhandledRejection', (ex) => {
-    logger.error(`unhandledRejection :: ${ex}`)
+    logger.error(ex.message, ex)
 })

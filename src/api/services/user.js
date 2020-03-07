@@ -7,7 +7,7 @@ const signUp = async (req, res, next) => {
     const { name, email, password} = req.body
     let [user, noUser] = await to(User.findOne({ email }));
     if (user) {
-        return res.status(409).send('Mail already exist')
+        return res.status(409).json({msg: 'Mail already exist'})
     }
     
     user = new User({
@@ -21,7 +21,7 @@ const signUp = async (req, res, next) => {
     const [save, saveErr] = await to(user.save())
 
     if (saveErr) {
-        return next({msg: 'Internal error on save', status: 400, err: saveErr, func: 'signUp'})
+        return res.status(400).json({msg: 'Internal error on save'})
     }
 
     return res.status(201).json({
@@ -36,7 +36,7 @@ const deleteUser = async (req, res, next) => {
     [_, deleteFailed] = await to(User.deleteOne({ _id: req.userData.userId }))
 
     if (deleteFailed) {
-        return next({msg: 'deleteUser', status: 500, err: deleteFailed, func: 'deleteUser'}) 
+        return res.status(400).json({msg: 'Delete user failed'})
     }
         res.status(200).json({
             msg: "User deleted"
