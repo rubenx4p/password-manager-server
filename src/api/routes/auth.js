@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const User = require('../models/user');
+const logger = require('../../config/logger')
 
 router.post('/', async (req, res, next) => {
     try {
@@ -13,6 +14,9 @@ router.post('/', async (req, res, next) => {
             return res.status(400).send({ msg: "Invalid email or password"})
         }
         const token = user.generateAuthToken();
+        
+        logger.info('auth succeeded')
+
         return res.status(200).json({
             msg: 'Auth successful',
             token
