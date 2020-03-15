@@ -36,9 +36,8 @@ const signUp = async (req, res, next) => {
    
     const emailInfo = {
         to: user.email,
-        subject: "Account-ui confirm email", // Subject line
-        text: `You are receiving this because you have requested the reset of the password.
-        Please click on the following link, or paste this into your browser to confirm your email.
+        subject: "Account-Manager confirm email", // Subject line
+        text: `Please click on the following link, or paste this into your browser to confirm your email.
         ${process.env.PROTOCOL}://${req.headers.host}/api/users/confirm/${token}`
     }
 
@@ -110,9 +109,8 @@ const forgetPassword = async (req, res, next) => {
 
     const emailInfo = {
         to: user.email,
-        subject: "Account-ui password reset", // Subject line
-        text: `You are receiving this because you have requested the reset of the password.
-        Please click on the following link, or paste this into your browser to complete the proccess.
+        subject: "Account-Manager password reset", // Subject line
+        text: `Please click on the following link, or paste it into your browser to reset your password.
         ${process.env.PROTOCOL}://${req.headers.origin}/reset-password/${token}
         
         If you didn't request this, please ignore this email and your password will remain unchanged`
