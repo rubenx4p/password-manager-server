@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken')
 const User = require('../models/user');
 const to = require('../../utils/to')
 const emailService = require('../../utils/email')
+const logger = require('../../config/logger')
 
 const signUp = async (req, res, next) => {
     const { name, email, password} = req.body
@@ -92,34 +93,32 @@ const forgetPassword = async (req, res, next) => {
     
     let [user] = await to(User.findOne({ email }));
 
-    if (!user) {
-        return res.status(410).json({msg: 'No account with that email address exist'})
-    }
+    if (user) {
+        const token = crypto.randomBytes(20).toString('hex')
 
-    const token = crypto.randomBytes(20).toString('hex')
+        user.resetPasswordToken = token;
+        user.resetPasswordExpired = Date.now() + 3600000 // 1 hour
 
-    user.resetPasswordToken = token;
-    user.resetPasswordExpired = Date.now() + 3600000 // 1 hour
+        const [save, saveErr] = await to(user.save())
 
-    const [save, saveErr] = await to(user.save())
+        if (saveErr) {
+            return res.status(400).json({msg: 'Internal error on save'})
+        }
 
-    if (saveErr) {
-        return res.status(400).json({msg: 'Internal error on save'})
-    }
+        const emailInfo = {
+            to: user.email,
+            subject: "Account-Manager password reset", // Subject line
+            text: `Please click on the following link, or paste it into your browser to reset your password.
+            ${process.env.PROTOCOL}://${req.headers.origin}/reset-password/${token}
+            
+            If you didn't request this, please ignore this email and your password will remain unchanged`
+        }
 
-    const emailInfo = {
-        to: user.email,
-        subject: "Account-Manager password reset", // Subject line
-        text: `Please click on the following link, or paste it into your browser to reset your password.
-        ${process.env.PROTOCOL}://${req.headers.origin}/reset-password/${token}
-        
-        If you didn't request this, please ignore this email and your password will remain unchanged`
-    }
+        const [sent, sentErr] = await to(emailService.send(emailInfo))
 
-    const [sent, sentErr] = await to(emailService.send(emailInfo))
-
-    if (sentErr) {
-        return res.status(400).json({msg: 'Problem sending mail'})
+        if (sentErr) {
+            logger.error(`Problem sending mail :: ${sentErr.message}`)
+        }
     }
 
     res.status(200).json({msg: `Mail sent to ${user.email}`})
