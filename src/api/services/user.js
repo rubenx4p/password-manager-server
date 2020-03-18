@@ -107,11 +107,14 @@ const forgetPassword = async (req, res, next) => {
 
         const emailInfo = {
             to: user.email,
-            subject: "Account-Manager password reset", // Subject line
-            text: `Please click on the following link, or paste it into your browser to reset your password.
+            subject: "[Account-Manager] Please reset your password", // Subject line
+            text: `We heard that you lost your Account-Manager password. Sorry about that!
+            Bug don't worry! You can use the following link to reset your password.
+            Please click on that link, or paste it into your browser to reset your password.
             ${process.env.PROTOCOL}://${req.headers.origin}/reset-password/${token}
             
-            If you didn't request this, please ignore this email and your password will remain unchanged`
+            If you don't use this link within 1 day, it will expire.
+            If you didn't request this, please ignore this email and your password will remain unchanged.`
         }
 
         const [sent, sentErr] = await to(emailService.send(emailInfo))
