@@ -15,30 +15,31 @@ const getAccounts = async (req, res, next) => {
     res.status(200).json({ accounts: user.accounts });
   };
 
-const addAccount = async (req, res, next) => {
-    const [user, userErr] = await to(User.findById(req.userData.userId))
-    
+const addAccount = async ({userData, body}, res, next) => {
+    const [user, userErr] = await to(User.findById(userData.userId))
+
     if (userErr) {
         return res.status(400).json({msg: 'Invalid user'})
     }
 
-    const { key, password} = req.body
-    const [validPassword, passwordErr] = await to(bcrypt.compare(key, user.password))
+    const { key, password, name, username } = body
+
+    const [validKey, keyErr] = await to(bcrypt.compare(key, user.password))
     
-    if (!validPassword) {
-        return res.status(400).json({msg: 'Invalid password'})
+    if (!validKey) {
+        return res.status(400).json({msg: 'Invalid key'})
     }
     
     const ciphertext = aes.encrypt(password, key)
     const account = new Account({
-        name: req.body.name,
-        username: req.body.username,
+        name,
+        username,
         password: ciphertext
     })
 
     user.accounts.push(account);
     const [save, saveErr] = await to(user.save())
-    
+
     if (saveErr) {
         return res.status(500).json({msg: 'Internal error on save'})
     }
@@ -118,21 +119,17 @@ const editAccount = async ({ userData, params, body }, res, next) => {
         return res.status(400).json({msg: 'Invalid user'})
     }
 
-    const account = user.accounts.id(params.id)
-    const { key } = body
-    const decryptObject = aes.decrypt(account.password, key)
+    const { key, name, username, password } = body
 
-    if (decryptObject.status === 500) {
-        return res.status(500).json({msg: 'The key is inccorect'})
+    const [validKey, keyErr] = await to(bcrypt.compare(key, user.password))
+    
+    if (!validKey) {
+        return res.status(400).json({msg: 'Invalid key'})
     }
 
-    const {
-        password = decryptObject.message,
-        name = account.name,
-        username = account.username
-    } = req.body
-
     const ciphertext = aes.encrypt(password, key)
+
+    const account = user.accounts.id(params.id)
 
     account.set({
         name,
