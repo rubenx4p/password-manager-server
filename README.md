@@ -16,3 +16,6 @@ MONGODB_USERNAME
 MONGODB_PASSWORD
 MONGO_CONNECTION_STING
 ```
+
+### Pre conditions
+create a mongoDB cluster and connect the server to it
