@@ -5,7 +5,9 @@ const logger = require('../../config/logger')
 const to = require('../../utils/to')
 
 router.post('/', async (req, res) => {
-    const [user] = await to(User.findOne({ email: req.body.email }))
+    const { email, password } = req.body
+    
+    const [user] = await to(User.findOne({ email: String(email).toLowerCase() }))
     
     if (!user) {
         return res.status(400).send({ msg: "Invalid email or password"})
@@ -15,7 +17,7 @@ router.post('/', async (req, res) => {
         return res.status(400).send({ msg: "Please confirm your email to login"})
     }
 
-    const validPassword = await bcrypt.compare(req.body.password, user.password)
+    const validPassword = await bcrypt.compare(password, user.password)
     
     if (!validPassword) {
         return res.status(400).send({ msg: "Invalid email or password"})

@@ -9,7 +9,7 @@ const logger = require('../../config/logger')
 
 const signUp = async (req, res, next) => {
     const { name, email, password} = req.body
-    let [user, noUser] = await to(User.findOne({ email }));
+    let [user, noUser] = await to(User.findOne({ email: String(email).toLowerCase() }));
 
     if (user) {
         return res.status(409).json({msg: 'Mail already exist'})
