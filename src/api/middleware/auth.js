@@ -1,14 +1,15 @@
-const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken')
+const messages = require('../constants/messages')
 
 module.exports = (req, res, next) => {
     try {
-        const token = req.headers.authorization.split(" ")[1];
+        const token = req.headers.authorization.split(" ")[1]
         const decoded = jwt.verify(token, process.env.JWT_KEY)
-        req.userData = decoded;
-        next();
+        req.userData = decoded
+        next()
     } catch (error) {
         return res.status(401).json({
-            msg: 'Unauthorized or authorization expired'
+            msg: messages.AUTHORIZATION_FAILED
         })
     }
-};
+}

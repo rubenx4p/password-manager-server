@@ -1,5 +1,5 @@
 const mongoose = require('mongoose')
-const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken')
 const Account = require('./account')
 
 const userSchema = new mongoose.Schema({
@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema({
     accounts: [Account.schema],
     resetPasswordToken: String,
     resetPasswordExpired: Date
-});
+})
 
 userSchema.methods.generateAuthToken = function() {
     const token = jwt.sign(
@@ -26,7 +26,7 @@ userSchema.methods.generateAuthToken = function() {
         process.env.JWT_KEY,
         { expiresIn: '30d' }
     )
-    return token;
+    return token
 }
 
 module.exports = mongoose.model('User', userSchema)

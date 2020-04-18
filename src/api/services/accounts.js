@@ -1,33 +1,36 @@
-const bcrypt = require('bcryptjs');
-const Account = require('../models/account');
-const User = require('../models/user');
+const Account = require('../models/account')
 const aes = require('../../utils/aes')
-const to = require('../../utils/to')
-const getAccounts = async (req, res, next) => {
-    // await Promise.reject(new Error('!!!!!!!!!!!!'))
-    const userId = req.userData.userId;
-    const [user, err] = await to(User.findById(userId))
+const usersDB = require('../db/users')
+const messages = require('../constants/messages')
+const bcrypt = require('../../utils/bcrypt')
 
-    if (err) {
-        return res.status(400).json({msg: 'User not found'})
+const getAccounts = async ({ userData }, res) => {
+    const { userId } = userData
+
+    const user = await usersDB.findById(userId)
+    
+    if (!user) {
+        return res.status(400).json({msg: messages.USER_NOT_FOUND })
     }
 
-    res.status(200).json({ accounts: user.accounts });
-  };
+    res.status(200).json({ accounts: user.accounts })
+  }
 
-const addAccount = async ({userData, body}, res, next) => {
-    const [user, userErr] = await to(User.findById(userData.userId))
+const addAccount = async ({ userData, body }, res) => {
+    const { userId } = userData
 
-    if (userErr) {
-        return res.status(400).json({msg: 'Invalid user'})
+    const user = await usersDB.findById(userId)
+
+    if (!user) {
+        return res.status(400).json({msg: messages.USER_NOT_FOUND })
     }
 
     const { key, password, name, username } = body
 
-    const [validKey, keyErr] = await to(bcrypt.compare(key, user.password))
+    const validKey = await bcrypt.compare(key, user.password)
     
     if (!validKey) {
-        return res.status(400).json({msg: 'Invalid key'})
+        return res.status(400).json({msg: messages.INVALID_KEY})
     }
     
     const ciphertext = aes.encrypt(password, key)
@@ -37,94 +40,93 @@ const addAccount = async ({userData, body}, res, next) => {
         password: ciphertext
     })
 
-    user.accounts.push(account);
-    const [save, saveErr] = await to(user.save())
+    user.accounts.push(account)
 
-    if (saveErr) {
-        return res.status(500).json({msg: 'Internal error on save'})
-    }
+    await usersDB.save(user)
 
     res.status(200).json({
-        msg: "Account added successfuly",
+        msg: messages.ACCOUNT_ADDED_SUCCESSFULY,
         account: { id: account._id, name: account.name}
     })
 }
+
 const deleteAccount = async ({ userData, params, body }, res) => {
     const { userId } = userData
-    const [user, userErr] = await to(User.findById(userId))
 
-    if (userErr) {
-        return res.status(400).json({msg: 'Invalid user'})
+    const user = await usersDB.findById(userId)
+
+    if (!user) {
+        return res.status(400).json({msg: messages.USER_NOT_FOUND })
     }
 
     const { key } = body
-    const [validKey, keyErr] = await to(bcrypt.compare(key, user.password))
+
+    const validKey = await bcrypt.compare(key, user.password)
+
     if (!validKey) {
-        return res.status(400).json({msg: 'Invalid key'})
+        return res.status(400).json({msg: messages.INVALID_KEY })
     }
 
     const { id } = params
-    const [pull, pullErr] = await to(user.accounts.pull(id))
 
-    if (pullErr) {
-        return res.status(400).json({msg: 'Wrong account'})
-    }
+    await usersDB.pullAccount(user, id)
 
-    const [save, saveErr] = await to(user.save())
+    await usersDB.save(user)
 
-    if (saveErr) {
-        return res.status(400).json({msg: 'Internal error on save'})
-    }
-
-    res.status(200).send({msg: 'Account Successfully removed'})
+    res.status(200).send({msg: messages.ACCOUNT_SUCCESSFULY_REMOVED })
 }
   
-const receiveAccountPassword = async ({ userData, params, body }, res, next) => {
+const receiveAccountPassword = async ({ userData, params, body }, res) => {
     const { userId } = userData
-    const [user, userErr] = await to(User.findById(userId))
 
-    if (userErr) {
-        return res.status(400).json({msg: 'Invalid user'})
+    const user = await usersDB.findById(userId)
+
+    if (!user) {
+        return res.status(400).json({msg: messages.USER_NOT_FOUND})
     }
 
     const { key } = body
-    const [validKey, keyErr] = await to(bcrypt.compare(key, user.password))
+
+    const validKey = await bcrypt.compare(key, user.password)
 
     if (!validKey) {
-        return res.status(400).json({msg: 'Invalid key'})
+        return res.status(400).json({msg: messages.INVALID_KEY })
     }
 
     const { id } = params
-    const [account, accountErr] = await to(user.accounts.id(id))
 
-    if (accountErr) {
-        return res.status(400).json({msg: 'Invalid account'})
-    }
-    const decryptObject = aes.decrypt(account.password, key)
+    const account = await usersDB.findAccountById(user, id)
 
-    if (decryptObject.status === 500) {
-        return res.status(400).json({msg: 'the key is inccorect'})
+    if (!account) {
+        return res.status(400).json({msg: messages.ACCOUNT_DOES_NOT_EXIST})
     }
+    const password = aes.decrypt(account.password, key)
+
+    if (!password) {
+        return res.status(400).json({msg: messages.INVALID_KEY})
+    }
+    
     res.status(200).json({
-        msg: "received password successfuly",
-        password: decryptObject.message
+        msg: messages.RECEIVED_PASSWARD_SUCCESSFULY,
+        password
     })
 }
 
 const editAccount = async ({ userData, params, body }, res, next) => {
     const { userId } = userData
-    const [user, userErr] = await to(User.findById(userId))
     
-    if (userErr) {
-        return res.status(400).json({msg: 'Invalid user'})
+    const user = await usersDB.findById(userId)
+    
+    if (!user) {
+        return res.status(400).json({msg: messages.USER_NOT_FOUND })
     }
 
     const { key, name, username, password } = body
 
-    const [validKey, keyErr] = await to(bcrypt.compare(key, user.password))
+    const validKey = await bcrypt.compare(key, user.password)
     
     if (!validKey) {
-        return res.status(400).json({msg: 'Invalid key'})
+        return res.status(400).json({msg: messages.INVALID_KEY })
     }
 
     const ciphertext = aes.encrypt(password, key)
@@ -137,11 +139,8 @@ const editAccount = async ({ userData, params, body }, res, next) => {
         password: ciphertext
     })
     
-    const [save, saveErr] = await to(user.save())
+    await usersDB.save(user)
 
-    if (saveErr) {
-        return next({msg: 'Internal error on save', status: 400, err: saveErr, func: 'editAccount'})
-    }
     const result = {
         account: {
             id: account._id,
@@ -149,7 +148,7 @@ const editAccount = async ({ userData, params, body }, res, next) => {
             password: ciphertext,
             username
         },
-        msg: "Account edited successfuly"
+        msg: messages.ACCOUNT_EDITED_SUCCESSFULY
     }
     res.status(200).json(result)
 }
@@ -160,4 +159,4 @@ module.exports = {
     deleteAccount,
     receiveAccountPassword,
     editAccount
-};
+}

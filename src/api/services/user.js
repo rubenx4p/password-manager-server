@@ -1,18 +1,22 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
-const crypto = require("crypto");
+const mongoose = require('mongoose')
+const crypto = require("crypto")
 const jwt = require('jsonwebtoken')
-const User = require('../models/user');
-const to = require('../../utils/to')
+const User = require('../models/user')
 const emailService = require('../../utils/email')
 const logger = require('../../config/logger')
+const usersDB = require('../db/users')
+const messages = require('../constants/messages')
+const bcryptUtil = require('../../utils/bcrypt')
+const appRoot = require('app-root-path')
 
-const signUp = async (req, res, next) => {
-    const { name, email, password} = req.body
-    let [user, noUser] = await to(User.findOne({ email: String(email).toLowerCase() }));
+const signUp = async (req, res) => {
+    const { name, email, password } = req.body
+
+    let user = await usersDB.findOne({ email: email.toLowerCase() })
 
     if (user) {
-        return res.status(409).json({msg: 'Mail already exist'})
+        logger.info(`${messages.MAIL_ALREADY_EXIST} :: ${user.email}`)
+        return res.status(409).json({msg: messages.MAIL_ALREADY_EXIST})
     }
     
     user = new User({
@@ -21,33 +25,12 @@ const signUp = async (req, res, next) => {
         email: email
     })
 
-    user.password = await bcrypt.hash(password, 10);
+    user.password = await bcryptUtil.hash(password)
+    
+    await usersDB.save(user)
 
-    const [save, saveErr] = await to(user.save())
-
-    if (saveErr) {
-        return res.status(400).json({msg: 'Internal error on save'})
-    }
-
-    const token = jwt.sign(
-        { userId: user._id },
-        process.env.JWT_KEY,
-        { expiresIn: '1d' }
-    )
-   
-    const emailInfo = {
-        to: user.email,
-        subject: "Account-Manager confirm email", // Subject line
-        text: `Please click on the following link, or paste this into your browser to confirm your email.
-        ${process.env.PROTOCOL}://${req.headers.host}/api/users/confirm/${token}`
-    }
-
-    const [sent, sentErr] = await to(emailService.send(emailInfo))
-
-    if (sentErr) {
-        return res.status(400).json({msg: 'Problem sending mail'})
-    }
-
+    await emailService.sendVarificationMail(user._id, user.email, req.headers.host)
+    
     return res.status(201).json({
         user: {
             id: user._id,
@@ -63,90 +46,80 @@ const confirm = async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_KEY)
 
     const { userId } = decoded
-    
-    let [user] = await to(User.findOne({ _id: userId }));
+
+    const user = await usersDB.findById(userId)
+
+    if (!user) {
+        return res.status(400).json({msg: messages.USER_NOT_FOUND })
+    }
 
     user.confirmed = true
 
-    const [save, saveErr] = await to(user.save())
+    await usersDB.save(user)
+    // if (saveErr) {
+    //     return res.status(400).json({msg: 'The time to confirm the email was expired'})
+    // }
 
-    if (saveErr) {
-        return res.status(400).json({msg: 'The time to confirm the email was expired'})
-    }
-
-    res.status(200).json({msg: `confirmed successfuly`})
+    res.sendFile(`${appRoot}/src/pages/confirmed.html`)
 }
 
 const deleteUser = async (req, res) => {
-    [_, deleteFailed] = await to(User.deleteOne({ _id: req.userData.userId }))
+    usersDB.de
+    await usersDB.deleteOne({ _id: req.userData.userId })
 
-    if (deleteFailed) {
-        return res.status(400).json({msg: 'Delete user failed'})
-    }
-        res.status(200).json({
-            msg: "User deleted"
-        });
+    res.status(200).json({
+        msg: messages.USER_DELETED_SUCCESSFULY
+    })
 }
 
-const forgetPassword = async (req, res, next) => {
+const forgetPassword = async (req, res) => {
     const { email } = req.body
     
-    let [user] = await to(User.findOne({ email }));
+    let user = await usersDB.findOne({ email: email.toLowerCase() })
 
-    if (user) {
-        const token = crypto.randomBytes(20).toString('hex')
-
-        user.resetPasswordToken = token;
-        user.resetPasswordExpired = Date.now() + 3600000 // 1 hour
-
-        const [save, saveErr] = await to(user.save())
-
-        if (saveErr) {
-            return res.status(400).json({msg: 'Internal error on save'})
-        }
-
-        const emailInfo = {
-            to: user.email,
-            subject: "[Account-Manager] Please reset your password", // Subject line
-            text: `We heard that you lost your Account-Manager password. Sorry about that!
-            Bug don't worry! You can use the following link to reset your password.
-            Please click on that link, or paste it into your browser to reset your password.
-            ${process.env.PROTOCOL}://${req.headers.origin}/reset-password/${token}
-            
-            If you don't use this link within 1 day, it will expire.
-            If you didn't request this, please ignore this email and your password will remain unchanged.`
-        }
-
-        const [sent, sentErr] = await to(emailService.send(emailInfo))
-
-        if (sentErr) {
-            logger.error(`Problem sending mail :: ${sentErr.message}`)
-        }
+    if (!user) {
+        return res.status(400).json({msg: messages.USER_NOT_FOUND })
     }
+
+    const token = crypto.randomBytes(20).toString('hex')
+
+    user.resetPasswordToken = token
+    const ONE_DAY = 1000 * 60 * 60 * 24
+    user.resetPasswordExpired = Date.now() + ONE_DAY // 1 day
+
+    await usersDB.save(user)
+
+    const emailInfo = {
+        to: user.email,
+        subject: "[Guardian] Please reset your password", // Subject line
+        text: `We heard that you lost your password. Sorry about that!
+        But don't worry! You can use the following link to reset your password.
+        Please click on that link, or paste it into your browser to reset your password.
+        ${req.headers.origin}/reset-password/${token}
+        
+        If you don't use this link within 1 day, it will expire.
+        If you didn't request this, please ignore this email and your password will remain unchanged.`
+    }
+
+    await emailService.send(emailInfo)
 
     res.status(200).json({msg: `Mail sent to ${user.email}`})
 }
 
 const resetPassword = async ({ body }, res) => {
-    const { token } = body
+    const { token, password } = body
     
-    let [user] = await to(User.findOne({ resetPasswordToken: token, resetPasswordExpired: { $gt: Date.now() } }));
+    let user = await usersDB.findOne({ resetPasswordToken: token, resetPasswordExpired: { $gt: Date.now() } })
     
     if (!user) {
-        return res.status(401).json({msg: 'No Allowed'})
+        return res.status(401).json({msg: messages.NOT_ALLOWED})
     }
+    user.password = await bcryptUtil.hash(password)
+    user.accounts = []
 
-    user.password = await bcrypt.hash(body.password, 10);
-    user.accounts = [];
+    await usersDB.save(user)
 
-    const [save, saveErr] = await to(user.save())
-
-    if (saveErr) {
-        return res.status(400).json({msg: 'Problem saving'})
-    }
-
-    res.status(200).json({msg: `Password reset successfully`})
-
+    res.status(200).json({msg: messages.PASSWORD_RESET_SUCCESSFULLY})
 }
 module.exports = {
     signUp,
@@ -154,4 +127,4 @@ module.exports = {
     forgetPassword,
     resetPassword,
     confirm
-};
+}
