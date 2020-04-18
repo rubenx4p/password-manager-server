@@ -1,11 +1,12 @@
-const router = require('express').Router();
-const auth = require('../middleware/auth');
+const router = require('express').Router()
+const auth = require('../middleware/auth')
+const signUpSchema = require('../schemas/users/signUp')
 const userService = require('../services/user')
 
-router.post('/', userService.signUp);
-router.delete('/', auth, userService.deleteUser);
-router.post('/forgot-password', userService.forgetPassword);
-router.post('/reset-password', userService.resetPassword);
-router.get('/confirm/:token', userService.confirm);
+router.post('/', signUpSchema, userService.signUp)
+router.delete('/', auth, userService.deleteUser)
+router.post('/forgot-password', userService.forgetPassword)
+router.post('/reset-password', userService.resetPassword)
+router.get('/confirm/:token', userService.confirm)
 
-module.exports = router;
+module.exports = router

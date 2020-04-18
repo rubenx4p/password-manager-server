@@ -1,5 +1,5 @@
-const appRoot = require('app-root-path');
-const { createLogger, transports } = require('winston');
+const appRoot = require('app-root-path')
+const { createLogger, transports } = require('winston')
 
 // define the custom settings for each transport (file, console)
 const options = {
@@ -16,7 +16,7 @@ const options = {
     handleExceptions: true,
     colorize: true,
   },
-};
+}
 
 // Enable exception handling when you create your logger.
 const logger = createLogger({
@@ -29,14 +29,14 @@ const logger = createLogger({
     new transports.Console(options.console)
   ],
   exitOnError: false, // do not exit on handled exceptions
-});
+})
 
 // create a stream object with a 'write' function that will be used by `morgan`
 logger.stream = {
   write: function(message, encoding) {
     // use the 'info' log level so the output will be picked up by both transports (file and console)
-        logger.info(message);
+        logger.info(message)
   },
-};
+}
 
-module.exports = logger;
+module.exports = logger
