@@ -56,9 +56,6 @@ const confirm = async (req, res) => {
     user.confirmed = true
 
     await usersDB.save(user)
-    // if (saveErr) {
-    //     return res.status(400).json({msg: 'The time to confirm the email was expired'})
-    // }
 
     res.sendFile(`${appRoot}/src/pages/confirmed.html`)
 }

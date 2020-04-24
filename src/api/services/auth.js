@@ -7,7 +7,6 @@ const emailService = require('../../utils/email')
 const login = async (req, res) => {
     const { email, password } = req.body
 
-    // let user = await usersDB.findOne({ email: email.toLowerCase() }, {confirmed: 1, password: 1})
     let user = await usersDB.findOne({ email: email.toLowerCase() }, { confirmed: 1, email: 1, password: 1 })
 
     if (!user) {
