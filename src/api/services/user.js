@@ -27,9 +27,9 @@ const signUp = async (req, res) => {
 
     user.password = await bcryptUtil.hash(password)
     
-    await usersDB.save(user)
-
     await emailService.sendVarificationMail(user._id, user.email, req.headers.host)
+    
+    await usersDB.save(user)
     
     return res.status(201).json({
         user: {
