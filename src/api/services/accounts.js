@@ -8,13 +8,13 @@ const getAccounts = async ({ userData }, res) => {
     const { userId } = userData
 
     const user = await usersDB.findById(userId)
-    
+
     if (!user) {
-        return res.status(400).json({msg: messages.USER_NOT_FOUND })
+        return res.status(400).json({ msg: messages.USER_NOT_FOUND })
     }
 
     res.status(200).json({ accounts: user.accounts })
-  }
+}
 
 const addAccount = async ({ userData, body }, res) => {
     const { userId } = userData
@@ -22,17 +22,17 @@ const addAccount = async ({ userData, body }, res) => {
     const user = await usersDB.findById(userId)
 
     if (!user) {
-        return res.status(400).json({msg: messages.USER_NOT_FOUND })
+        return res.status(400).json({ msg: messages.USER_NOT_FOUND })
     }
 
     const { key, password, name, username } = body
 
     const validKey = await bcrypt.compare(key, user.password)
-    
+
     if (!validKey) {
-        return res.status(400).json({msg: messages.INVALID_KEY})
+        return res.status(400).json({ msg: messages.INVALID_KEY })
     }
-    
+
     const ciphertext = aes.encrypt(password, key)
     const account = new Account({
         name,
@@ -46,7 +46,7 @@ const addAccount = async ({ userData, body }, res) => {
 
     res.status(200).json({
         msg: messages.ACCOUNT_ADDED_SUCCESSFULY,
-        account: { id: account._id, name: account.name}
+        account: { id: account._id, name: account.name }
     })
 }
 
@@ -56,7 +56,7 @@ const deleteAccount = async ({ userData, params, body }, res) => {
     const user = await usersDB.findById(userId)
 
     if (!user) {
-        return res.status(400).json({msg: messages.USER_NOT_FOUND })
+        return res.status(400).json({ msg: messages.USER_NOT_FOUND })
     }
 
     const { key } = body
@@ -64,7 +64,7 @@ const deleteAccount = async ({ userData, params, body }, res) => {
     const validKey = await bcrypt.compare(key, user.password)
 
     if (!validKey) {
-        return res.status(400).json({msg: messages.INVALID_KEY })
+        return res.status(400).json({ msg: messages.INVALID_KEY })
     }
 
     const { id } = params
@@ -73,16 +73,16 @@ const deleteAccount = async ({ userData, params, body }, res) => {
 
     await usersDB.save(user)
 
-    res.status(200).send({msg: messages.ACCOUNT_SUCCESSFULY_REMOVED })
+    res.status(200).send({ msg: messages.ACCOUNT_SUCCESSFULY_REMOVED })
 }
-  
+
 const receiveAccountPassword = async ({ userData, params, body }, res) => {
     const { userId } = userData
 
     const user = await usersDB.findById(userId)
 
     if (!user) {
-        return res.status(400).json({msg: messages.USER_NOT_FOUND})
+        return res.status(400).json({ msg: messages.USER_NOT_FOUND })
     }
 
     const { key } = body
@@ -90,7 +90,7 @@ const receiveAccountPassword = async ({ userData, params, body }, res) => {
     const validKey = await bcrypt.compare(key, user.password)
 
     if (!validKey) {
-        return res.status(400).json({msg: messages.INVALID_KEY })
+        return res.status(400).json({ msg: messages.INVALID_KEY })
     }
 
     const { id } = params
@@ -98,35 +98,66 @@ const receiveAccountPassword = async ({ userData, params, body }, res) => {
     const account = await usersDB.findAccountById(user, id)
 
     if (!account) {
-        return res.status(400).json({msg: messages.ACCOUNT_DOES_NOT_EXIST})
+        return res.status(400).json({ msg: messages.ACCOUNT_DOES_NOT_EXIST })
     }
     const password = aes.decrypt(account.password, key)
 
     if (!password) {
-        return res.status(400).json({msg: messages.INVALID_KEY})
+        return res.status(400).json({ msg: messages.INVALID_KEY })
     }
-    
+
     res.status(200).json({
         msg: messages.RECEIVED_PASSWARD_SUCCESSFULY,
         password
     })
 }
 
+const receiveAllPasswordAccounts = async ({ userData, params, body }, res) => {
+    const { userId } = userData
+    const user = await usersDB.findById(userId)
+    if (!user) {
+        return res.status(400).json({ msg: messages.USER_NOT_FOUND })
+    }
+    const { key } = body
+    const validKey = await bcrypt.compare(key, user.password)
+    if (!validKey) {
+        return res.status(400).json({ msg: messages.INVALID_KEY })
+    }
+
+    const accountList = user.accounts.reduce((acc, { _id, password }) => {
+        const decryptedPassword = aes.decrypt(password, key)
+
+        if (decryptedPassword) {
+            const account = {
+                id: _id,
+                password: decryptedPassword
+            }
+            acc.push(account)
+        }
+        return acc
+    }, [])
+
+    return res.status(200).json({
+        msg: messages.RECEIVED_PASSWARD_SUCCESSFULY,
+        accounts: accountList
+    })
+}
+
 const editAccount = async ({ userData, params, body }, res, next) => {
     const { userId } = userData
-    
+
     const user = await usersDB.findById(userId)
-    
+
     if (!user) {
-        return res.status(400).json({msg: messages.USER_NOT_FOUND })
+        return res.status(400).json({ msg: messages.USER_NOT_FOUND })
     }
 
     const { key, name, username, password } = body
 
     const validKey = await bcrypt.compare(key, user.password)
-    
+
     if (!validKey) {
-        return res.status(400).json({msg: messages.INVALID_KEY })
+        return res.status(400).json({ msg: messages.INVALID_KEY })
     }
 
     const ciphertext = aes.encrypt(password, key)
@@ -138,7 +169,7 @@ const editAccount = async ({ userData, params, body }, res, next) => {
         username,
         password: ciphertext
     })
-    
+
     await usersDB.save(user)
 
     const result = {
@@ -158,5 +189,6 @@ module.exports = {
     addAccount,
     deleteAccount,
     receiveAccountPassword,
-    editAccount
+    editAccount,
+    receiveAllPasswordAccounts
 }

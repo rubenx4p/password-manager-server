@@ -9,6 +9,7 @@ const accountService = require('../services/accounts')
 
 router.get('/', auth, accountService.getAccounts)
 router.post('/', auth, addAccountSchema, accountService.addAccount)
+router.post('/unlockAll', auth, accountService.receiveAllPasswordAccounts)
 router.delete('/:id', auth, deleteAccountSchema, accountService.deleteAccount)
 router.post('/:id', auth, receiveAccountPasswordSchema, accountService.receiveAccountPassword)
 router.patch('/:id', auth, editAccountSchema, accountService.editAccount)
